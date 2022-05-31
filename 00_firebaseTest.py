@@ -35,7 +35,7 @@ fb.put('/管理員/admin', "林好棒", "好帥")
 fb.put('/疫調/A班', "王小明", "有足跡重疊")
 fb.put('/疫調/B班', "許大明", "無足跡重疊")
 fb.put('/疫調/A班', "張小胖", "有足跡重疊test2fun_a")
-fb.put('/疫調/B班', "吳小小", "無足跡重疊test1")
+fb.put('/疫調/B班', "吳小小", "無足跡重疊test1fun_b")
 
 users=fb.get('疫調/A班',None)
 
