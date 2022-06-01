@@ -1,6 +1,7 @@
+from email import message
 from flask import Flask
 app = Flask(__name__)
-
+from firebase import firebase
 from flask import request, abort
 from linebot import  LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -10,7 +11,8 @@ import datetime
 
 line_bot_api = LineBotApi('MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('d03f66f4f4f5e6229b108acb97396a34')
-
+url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
+fb = firebase.FirebaseApplication(url, None)
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -24,11 +26,13 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     mtext = event.message.text
-    if mtext == '@圖片地圖':
+    userText=mtext.split('@')
+    if userText[1] == '圖片地圖':
         sendImgmap(event)
-
-    elif mtext == '@日期時間':
+    elif userText[1] == '紀錄':
         sendDatetime(event)
+    elif userText[1] == '新增':
+        addCategory(event)
 
 @handler.add(PostbackEvent)  #PostbackTemplateAction觸發此事件
 def handle_postback(event):
@@ -36,42 +40,20 @@ def handle_postback(event):
     if backdata.get('action') == 'sell':
         sendData_sell(event, backdata)
 
-def sendImgmap(event):  #圖片地圖
+def addCategory(event):
     try:
-        image_url = 'https://i.imgur.com/Yz2yzve.jpg'  #圖片位址
-        imgwidth = 1040  #原始圖片寛度一定要1040
-        imgheight = 300
-        message = ImagemapSendMessage(
-            base_url=image_url,
-            alt_text="圖片地圖範例",
-            base_size=BaseSize(height=imgheight, width=imgwidth),  #圖片寬及高
-            actions=[
-                MessageImagemapAction(  #顯示文字訊息
-                    text='你點選了紅色區塊！',
-                    area=ImagemapArea(  #設定圖片範圍:左方1/4區域
-                        x=0, 
-                        y=0, 
-                        width=imgwidth*0.25, 
-                        height=imgheight  
-                    )
-                ),
-                URIImagemapAction(  #開啟網頁
-                    link_uri='http://www.e-happy.com.tw',
-                    area=ImagemapArea(  #右方1/4區域(藍色1)
-                        x=imgwidth*0.75, 
-                        y=0, 
-                        width=imgwidth*0.25, 
-                        height=imgheight  
-                    )
-                ),
-            ]
-        )
-        line_bot_api.reply_message(event.reply_token, message)
+        mtext = event.message.text
+        userText=mtext.split('@')
+        fb.put('/Category',userText[2],0)
+        message='新增成功!!!'
+        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message))
     except:
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
-
+        
 def sendDatetime(event):  #日期時間
     try:
+        mtext = event.message.text
+        userText=mtext.split('@')
         message = TemplateSendMessage(
             alt_text='日期時間範例',
             template=ButtonsTemplate(
@@ -112,17 +94,50 @@ def sendDatetime(event):  #日期時間
 
 def sendData_sell(event, backdata):  #Postback,顯示日期時間
     try:
-        if backdata.get('mode') == 'date':
-            dt = '日期為：' + event.postback.params.get('date')  #讀取日期
-        elif backdata.get('mode') == 'time':
-            dt = '時間為：' + event.postback.params.get('time')  #讀取時間
-        elif backdata.get('mode') == 'datetime':
+        if backdata.get('mode') == 'datetime':
             dt = datetime.datetime.strptime(event.postback.params.get('datetime'), '%Y-%m-%dT%H:%M')  #讀取日期時間
             dt = dt.strftime('{d}%Y-%m-%d, {t}%H:%M').format(d='日期為：', t='時間為：')  #轉為字串
+            
+        
         message = TextSendMessage(
             text=dt
         )
+        
         line_bot_api.reply_message(event.reply_token,message)
+    except:
+        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
+
+def sendImgmap(event):  #圖片地圖
+    try:
+        image_url = 'https://i.imgur.com/Yz2yzve.jpg'  #圖片位址
+        imgwidth = 1040  #原始圖片寛度一定要1040
+        imgheight = 300
+        message = ImagemapSendMessage(
+            base_url=image_url,
+            alt_text="圖片地圖範例",
+            base_size=BaseSize(height=imgheight, width=imgwidth),  #圖片寬及高
+            actions=[
+                MessageImagemapAction(  #顯示文字訊息
+                    text='你點選了紅色區塊！',
+                    area=ImagemapArea(  #設定圖片範圍:左方1/4區域
+                        x=0, 
+                        y=0, 
+                        width=imgwidth*0.25, 
+                        height=imgheight  
+                    )
+                ),
+                URIImagemapAction(  #開啟網頁
+                    link_uri='http://www.e-happy.com.tw',
+                    area=ImagemapArea(  #右方1/4區域(藍色1)
+                        x=imgwidth*0.75, 
+                        y=0, 
+                        width=imgwidth*0.25, 
+                        height=imgheight  
+                    )
+                ),
+            ]
+        )
+        line_bot_api.reply_message(event.reply_token, message)
     except:
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
 

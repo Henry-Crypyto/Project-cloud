@@ -1,10 +1,13 @@
+from tkinter.messagebox import NO
 from traceback import FrameSummary
+from typing import Any
 from firebase import firebase
+from importlib_metadata import NullFinder
 
 url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
 
 fb = firebase.FirebaseApplication(url, None)
-text1='Henry'
+"""text1='Henry'
 mtext='@N@Henry'
 new_users = [
 {'name': text1,'type':1},
@@ -22,7 +25,7 @@ for keysss in users:
        user_name.append(users[keysss]['name'])
 usersss=",".join(user_name)
 print(usersss)
-
+"""
 
 
             
@@ -31,7 +34,7 @@ print(usersss)
 
 
 
-fb.put('/管理員/admin', "林好棒", "好帥")
+fb.put('/Category',)
 fb.put('/疫調/A班', "王小明", "有足跡重疊")
 fb.put('/疫調/B班', "許大明", "無足跡重疊")
 fb.put('/疫調/A班', "張小胖", "有足跡重疊test2fun_a")
