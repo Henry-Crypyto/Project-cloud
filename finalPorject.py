@@ -31,7 +31,7 @@ def callback():
 
 @handler.add(MessageEvent)
 def handle_message(event):
-   if event.message.type=='image':
+    if event.message.type=='image':
         image_name = ''.join(random.choice(string.ascii_letters + string.digits) for x in range(4))
         image_content = line_bot_api.get_message_content(event.message.id)
         image_name = image_name.upper()+'.jpg'
@@ -40,6 +40,14 @@ def handle_message(event):
             for chunk in image_content.iter_content():
                 fd.write(chunk)
         qrcodeDecode(event,path)
+    elif event.message.type=='audio':
+        text23='聲音訊息'
+        audio_content = line_bot_api.get_message_content(event.message.id)
+        path='./static/sound.m4a'
+        with open(path, 'wb') as fd:
+          for chunk in audio_content.iter_content():
+              fd.write(chunk)
+        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text23))
         
         
 def qrcodeDecode(event,imgpath):
@@ -60,12 +68,8 @@ def qrcodeDecode(event,imgpath):
       cv2.imwrite('ROI.png', ROI)
       x = 70
       y = 500
-# 裁切區域的長度與寬度
       w = 300
       h = 500
-
-# 裁切圖片
-    
       img = cv2.imread('ROI.png')
       crop_img = img[y:y+h, x:x+w]
       cv2.imwrite('QR.png', crop_img)
@@ -74,8 +78,13 @@ def qrcodeDecode(event,imgpath):
       data1=str_data.split(',')
       data2=str(data1)
       text1=data2[17:27]
-      line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text1))      
-    
+      if data2[24:27]== '578':
+          message='恭喜中獎500元!!!\n'+text1
+          line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message))
+      elif data2[24:27]!= '578':
+          message1='沒中獎，下次再來~\n'+text1
+          line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message1))
+          
     except:
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))    
         
