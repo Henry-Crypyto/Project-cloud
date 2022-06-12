@@ -7,7 +7,7 @@ from importlib_metadata import NullFinder
 url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
 
 fb = firebase.FirebaseApplication(url, None)
-"""text1='Henry'
+text1='Henry'
 mtext='@N@Henry'
 new_users = [
 {'name': text1,'type':1},
@@ -25,7 +25,7 @@ for keysss in users:
        user_name.append(users[keysss]['name'])
 usersss=",".join(user_name)
 print(usersss)
-"""
+
 
 
             

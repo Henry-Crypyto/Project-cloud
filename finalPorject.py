@@ -1,5 +1,8 @@
+from collections import UserList
 from email import message
 from flask import Flask
+import random 
+import string
 app = Flask(__name__)
 from firebase import firebase
 from flask import request, abort
@@ -8,7 +11,10 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, PostbackEvent, TextSendMessage, ImagemapSendMessage, BaseSize, MessageImagemapAction, URIImagemapAction, ImagemapArea, TemplateSendMessage, ButtonsTemplate, DatetimePickerTemplateAction
 from urllib.parse import parse_qsl
 import datetime
-
+import cv2
+import sys  # opencv
+from PIL import Image # Python Imaging Library
+from pyzbar.pyzbar import decode # python zbarcode
 line_bot_api = LineBotApi('MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('d03f66f4f4f5e6229b108acb97396a34')
 url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
@@ -23,16 +29,58 @@ def callback():
         abort(400)
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent)
 def handle_message(event):
-    mtext = event.message.text
-    userText=mtext.split('@')
-    if userText[1] == '圖片地圖':
-        sendImgmap(event)
-    elif userText[1] == '紀錄':
-        sendDatetime(event)
-    elif userText[1] == '新增':
-        addCategory(event)
+   if event.message.type=='image':
+        image_name = ''.join(random.choice(string.ascii_letters + string.digits) for x in range(4))
+        image_content = line_bot_api.get_message_content(event.message.id)
+        image_name = image_name.upper()+'.jpg'
+        path='./static/'+image_name
+        with open(path, 'wb') as fd:
+            for chunk in image_content.iter_content():
+                fd.write(chunk)
+        qrcodeDecode(event,path)
+        
+        
+def qrcodeDecode(event,imgpath):
+    try:
+      image = cv2.imread(imgpath)
+      gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+      blur = cv2.GaussianBlur(gray, (7,7), 0)
+      thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,11,3)
+
+      cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+      cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+      cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+      for c in cnts:
+          x,y,w,h = cv2.boundingRect(c)
+          ROI = image[y:y+h, x:x+w]
+          break
+
+      cv2.imwrite('ROI.png', ROI)
+      x = 70
+      y = 500
+# 裁切區域的長度與寬度
+      w = 300
+      h = 500
+
+# 裁切圖片
+    
+      img = cv2.imread('ROI.png')
+      crop_img = img[y:y+h, x:x+w]
+      cv2.imwrite('QR.png', crop_img)
+      data = decode(Image.open('QR.png'))  # QR code decoder
+      str_data=str(data[0])
+      data1=str_data.split(',')
+      data2=str(data1)
+      text1=data2[17:27]
+      line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text1))      
+    
+    except:
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))    
+        
+    
+
 
 @handler.add(PostbackEvent)  #PostbackTemplateAction觸發此事件
 def handle_postback(event):
@@ -50,11 +98,13 @@ def addCategory(event):
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message))
     except:
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
-#@紀錄@{分類}@{事件名稱}       
+#@紀錄@{分類}@{事件名稱}
+
 def sendDatetime(event):  #日期時間
     try:
         
         mtext = event.message.text
+        a=mtext
         userText=mtext.split('@')
         newEvent = [{'task': userText[3],'time':0}]
         tgPath='/Category/'+userText[2]
@@ -110,6 +160,7 @@ def sendData_sell(event, backdata):  #Postback,顯示日期時間
         message = TextSendMessage(
             text=dt
         )
+    
         """
         mtext = event.message.text
         userText=mtext.split('-')
