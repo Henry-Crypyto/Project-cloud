@@ -6,7 +6,6 @@ from serpapi import GoogleSearch
 from pydub import AudioSegment  
 import random 
 from flask import Flask, request, abort
-
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -50,7 +49,12 @@ def handle_message(event):
     elif event.message.type=='audio':
         audioTotext(event)
     elif event.message.type=='text':
-        googleSearch(event)
+        rplyText=event.message.text
+        if rplyText[-4:]=='.jpg':
+            googleSearch(event)
+        elif rplyText[-4:]!='.jpg':
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='測次1111')) 
+        
         
         
 def audioTotext(event):
@@ -142,6 +146,7 @@ def googleSearch(event):
             message = ImageSendMessage(
             original_content_url=url, preview_image_url=url
             )
+            print(message)
             line_bot_api.reply_message(event.reply_token, message)
         except:
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
