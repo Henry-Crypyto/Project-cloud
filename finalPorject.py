@@ -1,7 +1,21 @@
 from collections import UserList
 from email import message
 from flask import Flask
+import speech_recognition as sr
+from serpapi import GoogleSearch
+from pydub import AudioSegment  
 import random 
+from flask import Flask, request, abort
+
+from linebot import (
+    LineBotApi, WebhookHandler
+)
+from linebot.exceptions import (
+    InvalidSignatureError
+)
+from linebot.models import *
+import re
+import os
 import string
 app = Flask(__name__)
 from firebase import firebase
@@ -32,27 +46,43 @@ def callback():
 @handler.add(MessageEvent)
 def handle_message(event):
     if event.message.type=='image':
-        image_name = ''.join(random.choice(string.ascii_letters + string.digits) for x in range(4))
-        image_content = line_bot_api.get_message_content(event.message.id)
-        image_name = image_name.upper()+'.jpg'
-        path='./static/'+image_name
-        with open(path, 'wb') as fd:
-            for chunk in image_content.iter_content():
-                fd.write(chunk)
-        qrcodeDecode(event,path)
+        qrcodeDecode(event)
     elif event.message.type=='audio':
+        audioTotext(event)
+    elif event.message.type=='text':
+        googleSearch(event)
+        
+        
+def audioTotext(event):
+    try:
         text23='聲音訊息'
         audio_content = line_bot_api.get_message_content(event.message.id)
         path='./static/sound.m4a'
         with open(path, 'wb') as fd:
           for chunk in audio_content.iter_content():
               fd.write(chunk)
-        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text23))
-        
-        
-def qrcodeDecode(event,imgpath):
+        r = sr.Recognizer()
+        AudioSegment.converter = 'C:\\Users\\hjins\\anaconda3\\envs\\line_env\\Lib\\site-packages\\ffmpeg\\bin\\ffmpeg.exe'
+        sound = AudioSegment.from_file_using_temporary_files(path)
+        path = os.path.splitext(path)[0]+'.wav'
+        sound.export(path, format="wav")
+        with sr.AudioFile(path) as source:
+          audio = r.record(source)
+        text12 = r.recognize_google(audio,language='zh-Hant')      
+        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text12))
+    except:
+      line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))   
+          
+def qrcodeDecode(event):
     try:
-      image = cv2.imread(imgpath)
+      image_name = ''.join(random.choice(string.ascii_letters + string.digits) for x in range(4))
+      image_content = line_bot_api.get_message_content(event.message.id)
+      image_name = image_name.upper()+'.jpg'
+      path='./static/'+image_name
+      with open(path, 'wb') as fd:
+        for chunk in image_content.iter_content():
+            fd.write(chunk)
+      image = cv2.imread(path)
       gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
       blur = cv2.GaussianBlur(gray, (7,7), 0)
       thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,11,3)
@@ -89,7 +119,34 @@ def qrcodeDecode(event,imgpath):
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))    
         
     
-
+def googleSearch(event):
+        
+        try:
+            get_message = event.message.text.rstrip()
+            URL_list = []
+            params = {
+                "engine": "google",
+                "tbm": "isch",
+                "api_key": "24410c7313e732c1f2363dc9939a220d0f4d0d6dab53d0372ca2272b9f2802b9",
+            }
+            params['q'] = get_message
+            client = GoogleSearch(params)
+            data = client.get_dict()
+            imgs = data['images_results']
+            x = 0
+            for img in imgs:
+                if x < 7:
+                    URL_list.append(img['original'])
+                    x += 1
+            url = random.choice(URL_list)
+            message = ImageSendMessage(
+            original_content_url=url, preview_image_url=url
+            )
+            line_bot_api.reply_message(event.reply_token, message)
+        except:
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
+            
+        
 
 @handler.add(PostbackEvent)  #PostbackTemplateAction觸發此事件
 def handle_postback(event):
