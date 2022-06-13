@@ -1,10 +1,21 @@
+from pyzbar.pyzbar import decode  # python zbarcode
+from PIL import Image  # Python Imaging Library
+import sys  # opencv
+import cv2
+import datetime
+from urllib.parse import parse_qsl
+from linebot.models import MessageEvent, TextMessage, PostbackEvent, TextSendMessage, ImagemapSendMessage, BaseSize, MessageImagemapAction, URIImagemapAction, ImagemapArea, TemplateSendMessage, ButtonsTemplate, DatetimePickerTemplateAction
+from linebot.exceptions import InvalidSignatureError
+from linebot import LineBotApi, WebhookHandler
+from flask import request, abort
+from firebase import firebase
 from collections import UserList
 from email import message
 from flask import Flask
 import speech_recognition as sr
 from serpapi import GoogleSearch
-from pydub import AudioSegment  
-import random 
+from pydub import AudioSegment
+import random
 from flask import Flask, request, abort
 from linebot import (
     LineBotApi, WebhookHandler
@@ -17,21 +28,13 @@ import re
 import os
 import string
 app = Flask(__name__)
-from firebase import firebase
-from flask import request, abort
-from linebot import  LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, PostbackEvent, TextSendMessage, ImagemapSendMessage, BaseSize, MessageImagemapAction, URIImagemapAction, ImagemapArea, TemplateSendMessage, ButtonsTemplate, DatetimePickerTemplateAction
-from urllib.parse import parse_qsl
-import datetime
-import cv2
-import sys  # opencv
-from PIL import Image # Python Imaging Library
-from pyzbar.pyzbar import decode # python zbarcode
-line_bot_api = LineBotApi('MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU=')
+line_bot_api = LineBotApi(
+    'MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('d03f66f4f4f5e6229b108acb97396a34')
 url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
 fb = firebase.FirebaseApplication(url, None)
+
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -42,117 +45,168 @@ def callback():
         abort(400)
     return 'OK'
 
+
 @handler.add(MessageEvent)
 def handle_message(event):
-    if event.message.type=='image':
+    if event.message.type == 'image':
         qrcodeDecode(event)
-    elif event.message.type=='audio':
+    elif event.message.type == 'audio':
         audioTotext(event)
-    elif event.message.type=='text':
-        rplyText=event.message.text
-        if rplyText[-4:]=='.jpg':
+    elif event.message.type == 'text':
+        rplyText = event.message.text
+        keywords = rplyText.split('@')
+        text3 = rplyText
+        if rplyText[-4:] == '.jpg':
             googleSearch(event)
-        elif rplyText[-4:]!='.jpg':
-            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='測次1111')) 
-        
-        
-        
+        elif keywords[1] == 'addCategory':
+            addCategory(event)
+        elif text3[3] == '@':
+            addExpenses(event)
+
+
 def audioTotext(event):
     try:
-        text23='聲音訊息'
+        text23 = '聲音訊息'
         audio_content = line_bot_api.get_message_content(event.message.id)
-        path='./static/sound.m4a'
+        path = './static/sound.m4a'
         with open(path, 'wb') as fd:
-          for chunk in audio_content.iter_content():
-              fd.write(chunk)
+            for chunk in audio_content.iter_content():
+                fd.write(chunk)
         r = sr.Recognizer()
         AudioSegment.converter = 'C:\\Users\\hjins\\anaconda3\\envs\\line_env\\Lib\\site-packages\\ffmpeg\\bin\\ffmpeg.exe'
         sound = AudioSegment.from_file_using_temporary_files(path)
         path = os.path.splitext(path)[0]+'.wav'
         sound.export(path, format="wav")
         with sr.AudioFile(path) as source:
-          audio = r.record(source)
-        text12 = r.recognize_google(audio,language='zh-Hant')      
-        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=text12))
+            audio = r.record(source)
+        text12 = r.recognize_google(audio, language='zh-Hant')
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text=text12))
     except:
-      line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))   
-          
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
+
+
 def qrcodeDecode(event):
     try:
-      image_name = ''.join(random.choice(string.ascii_letters + string.digits) for x in range(4))
-      image_content = line_bot_api.get_message_content(event.message.id)
-      image_name = image_name.upper()+'.jpg'
-      path='./static/'+image_name
-      with open(path, 'wb') as fd:
-        for chunk in image_content.iter_content():
-            fd.write(chunk)
-      image = cv2.imread(path)
-      gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-      blur = cv2.GaussianBlur(gray, (7,7), 0)
-      thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,11,3)
+        image_name = ''.join(random.choice(
+            string.ascii_letters + string.digits) for x in range(4))
+        image_content = line_bot_api.get_message_content(event.message.id)
+        image_name = image_name.upper()+'.jpg'
+        path = './static/'+image_name
+        with open(path, 'wb') as fd:
+            for chunk in image_content.iter_content():
+                fd.write(chunk)
+        image = cv2.imread(path)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)
+        thresh = cv2.adaptiveThreshold(
+            blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 3)
 
-      cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-      cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-      cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-      for c in cnts:
-          x,y,w,h = cv2.boundingRect(c)
-          ROI = image[y:y+h, x:x+w]
-          break
+        cnts = cv2.findContours(
+            thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+        for c in cnts:
+            x, y, w, h = cv2.boundingRect(c)
+            ROI = image[y:y+h, x:x+w]
+            break
 
-      cv2.imwrite('ROI.png', ROI)
-      x = 70
-      y = 500
-      w = 300
-      h = 500
-      img = cv2.imread('ROI.png')
-      crop_img = img[y:y+h, x:x+w]
-      cv2.imwrite('QR.png', crop_img)
-      data = decode(Image.open('QR.png'))  # QR code decoder
-      str_data=str(data[0])
-      data1=str_data.split(',')
-      data2=str(data1)
-      text1=data2[17:27]
-      if data2[24:27]== '578':
-          message='恭喜中獎500元!!!\n'+text1
-          line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message))
-      elif data2[24:27]!= '578':
-          message1='沒中獎，下次再來~\n'+text1
-          line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message1))
-          
+        cv2.imwrite('ROI.png', ROI)
+        x = 70
+        y = 500
+        w = 300
+        h = 500
+        img = cv2.imread('ROI.png')
+        crop_img = img[y:y+h, x:x+w]
+        cv2.imwrite('QR.png', crop_img)
+        data = decode(Image.open('QR.png'))  # QR code decoder
+        str_data = str(data[0])
+        data1 = str_data.split(',')
+        data2 = str(data1)
+        text1 = data2[17:27]
+        if data2[24:27] == '578':
+            message = '恭喜中獎500元!!!\n'+text1
+            line_bot_api.reply_message(
+                event.reply_token, TextSendMessage(text=message))
+        elif data2[24:27] != '578':
+            message1 = '沒中獎，下次再來~\n'+text1
+            line_bot_api.reply_message(
+                event.reply_token, TextSendMessage(text=message1))
+
     except:
-            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))    
-        
-    
-def googleSearch(event):
-        
-        try:
-            get_message = event.message.text.rstrip()
-            URL_list = []
-            params = {
-                "engine": "google",
-                "tbm": "isch",
-                "api_key": "24410c7313e732c1f2363dc9939a220d0f4d0d6dab53d0372ca2272b9f2802b9",
-            }
-            params['q'] = get_message
-            client = GoogleSearch(params)
-            data = client.get_dict()
-            imgs = data['images_results']
-            x = 0
-            for img in imgs:
-                if x < 7:
-                    URL_list.append(img['original'])
-                    x += 1
-            url = random.choice(URL_list)
-            message = ImageSendMessage(
-            original_content_url=url, preview_image_url=url
-            )
-            print(message)
-            line_bot_api.reply_message(event.reply_token, message)
-        except:
-            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
-            
-        
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
 
+
+def googleSearch(event):
+
+    try:
+        get_message = event.message.text.rstrip()
+        URL_list = []
+        params = {
+            "engine": "google",
+            "tbm": "isch",
+            "api_key": "24410c7313e732c1f2363dc9939a220d0f4d0d6dab53d0372ca2272b9f2802b9",
+        }
+        params['q'] = get_message
+        client = GoogleSearch(params)
+        data = client.get_dict()
+        imgs = data['images_results']
+        x = 0
+        for img in imgs:
+            if x < 7:
+                URL_list.append(img['original'])
+                x += 1
+        url = random.choice(URL_list)
+        message = ImageSendMessage(
+            original_content_url=url, preview_image_url=url
+        )
+        print(message)
+        line_bot_api.reply_message(event.reply_token, message)
+    except:
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
+# @交通@火車@140
+
+
+def addExpenses(event):
+    mtext = event.message.text
+    keywords = mtext.split('@')
+    try:
+        price = int(keywords[3])
+        new_users = [{'name': keywords[2], 'price':price}]
+        path = '/Category/'+keywords[1]
+        for data in new_users:
+            fb.post(path, data)
+        message1 = 'Add Complete!!'
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text=message1))
+        #line_bot_api.reply_message(event.reply_token, [TextSendMessage(text= reply_text), TextSendMessage(text= reply_text1)])
+
+    except:
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
+
+
+def addCategory(event):
+    try:
+        mtext = event.message.text
+        userText = mtext.split('@')
+        fb.put('/Category', userText[2], '0')
+        message = '新增成功!!!'
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text=message))
+    except:
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
+
+
+if __name__ == '__main__':
+    app.run()
+
+
+"""
 @handler.add(PostbackEvent)  #PostbackTemplateAction觸發此事件
 def handle_postback(event):
     backdata = dict(parse_qsl(event.postback.data))  #取得data資料
@@ -160,15 +214,7 @@ def handle_postback(event):
         sendData_sell(event, backdata)
 
 
-def addCategory(event):
-    try:
-        mtext = event.message.text
-        userText=mtext.split('@')
-        fb.put('/Category',userText[2],'0')
-        message='新增成功!!!'
-        line_bot_api.reply_message(event.reply_token,TextSendMessage(text=message))
-    except:
-        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
+
 #@紀錄@{分類}@{事件名稱}
 
 def sendDatetime(event):  #日期時間
@@ -232,7 +278,7 @@ def sendData_sell(event, backdata):  #Postback,顯示日期時間
             text=dt
         )
     
-        """
+        
         mtext = event.message.text
         userText=mtext.split('-')
         print(userText)
@@ -243,7 +289,7 @@ def sendData_sell(event, backdata):  #Postback,顯示日期時間
                      myKey = str(key)
                      finalString=tgPath1+myKey
                      fb.put(finalString,"time",dt) 
-        """
+        
         line_bot_api.reply_message(event.reply_token,message)
     except:
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！postback'))
@@ -281,6 +327,4 @@ def sendImgmap(event):  #圖片地圖
         line_bot_api.reply_message(event.reply_token, message)
     except:
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='發生錯誤！'))
-
-if __name__ == '__main__':
-    app.run()
+        """
