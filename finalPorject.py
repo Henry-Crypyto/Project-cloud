@@ -1,9 +1,10 @@
 from cv2 import findEssentialMat
 from pyzbar.pyzbar import decode  # python zbarcode
-from PIL import Image  # Python Imaging Library
-import sys  # opencv
+from PIL import Image  # Python Imaging Library 
 import cv2
-import datetime
+import pyimgur
+import pandas as pd
+import matplotlib.pyplot as plt
 from urllib.parse import parse_qsl
 from linebot.models import MessageEvent, TextMessage, PostbackEvent, TextSendMessage, ImagemapSendMessage, BaseSize, MessageImagemapAction, URIImagemapAction, ImagemapArea, TemplateSendMessage, ButtonsTemplate, DatetimePickerTemplateAction
 from linebot.exceptions import InvalidSignatureError
@@ -60,16 +61,17 @@ def handle_message(event):
             googleSearch(event)
         elif keywords[1] == '新增種類':
             addCategory(event)
-        elif rplyText[0] == '@' and len(rplyText)>3:
+        elif rplyText[0] == '@' and len(rplyText)>5:
             addExpenses(event)
         elif rplyText[0] == '@' and len(rplyText)==3:
             totalCaculate(event)
+        elif keywords[1] == '圓餅圖' and len(rplyText)==4 :
+            totalPiechart(event)
             
 
 
 def audioTotext(event):
     try:
-        text23 = '聲音訊息'
         audio_content = line_bot_api.get_message_content(event.message.id)
         path = './static/sound.m4a'
         with open(path, 'wb') as fd:
@@ -193,7 +195,6 @@ def totalCaculate(event):#@交通
     mtext = event.message.text
     keywords = mtext.split('@')
     path = '/Category/'+keywords[1]
-    totalPrice=0
     try:
         expensesName=[]
         expensesPrice=[]
@@ -211,7 +212,80 @@ def totalCaculate(event):#@交通
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！'))
         
         
+def totalPiechart(event):#@交通
+    mtext = event.message.text
+    keywords = mtext.split('@')
+    path1 = '/Category/交通'
+    path2 = '/Category/美食'
+    path3 = '/Category/休閒'
+    path4 = '/Category/其他'
+    try:
+        expensesName1=[]
+        expensesName2=[]
+        expensesName3=[]
+        expensesName4=[]
+        expensesPrice1=[]
+        expensesPrice2=[]
+        expensesPrice3=[]
+        expensesPrice4=[]
+        expensesKey1 = fb.get(path1, None)
+        for keysss in expensesKey1:
+            expensesName1.append(expensesKey1.get(keysss).get('name')+str(expensesKey1.get(keysss).get('price')))
+        for keysss in expensesKey1:
+            expensesPrice1.append(expensesKey1.get(keysss).get('price'))
+        expensesSum1 = sum(expensesPrice1)
         
+        expensesKey2 = fb.get(path2, None)
+        for keysss in expensesKey2:
+            expensesName2.append(expensesKey2.get(keysss).get('name')+str(expensesKey2.get(keysss).get('price')))
+        for keysss in expensesKey2:
+            expensesPrice2.append(expensesKey2.get(keysss).get('price'))
+        expensesSum2 = sum(expensesPrice2)
+        
+        expensesKey3 = fb.get(path3, None)
+        for keysss in expensesKey3:
+            expensesName3.append(expensesKey3.get(keysss).get('name')+str(expensesKey3.get(keysss).get('price')))
+        for keysss in expensesKey3:
+            expensesPrice3.append(expensesKey3.get(keysss).get('price'))
+        expensesSum3 = sum(expensesPrice3)
+        
+        expensesKey4 = fb.get(path4, None)
+        for keysss in expensesKey4:
+            expensesName4.append(expensesKey4.get(keysss).get('name')+str(expensesKey4.get(keysss).get('price')))
+        for keysss in expensesKey4:
+            expensesPrice4.append(expensesKey4.get(keysss).get('price'))
+        expensesSum4 = sum(expensesPrice4)
+        
+        
+        spend1=int(expensesSum1)
+        spend2=int(expensesSum2)
+        spend3=int(expensesSum3)
+        spend4=int(expensesSum4)
+        price1=str(expensesSum1)
+        price2=str(expensesSum2)
+        price3=str(expensesSum3)
+        price4=str(expensesSum4)
+        total=spend1+spend2+spend3+spend4
+        totalText=str(total)
+        df = pd.DataFrame([['traffic:'+price1, spend1], ['food:'+price2, spend2],['entertainment:'+price3, spend3],['others:'+price4, spend4],],columns=['Category', 'price'])
+        plt.pie(df['price'], labels=df['Category'], autopct='%1.2f%%')
+        plt.title('Expenses:'+totalText)
+        plt.savefig('Piechart.jpg')
+        
+        CLIENT_ID = "64c8666d44b0d79"
+        PATH = "Piechart.jpg" #A Filepath to an image on your computer"
+        title = "Uploaded with PyImgur"
+
+        im = pyimgur.Imgur(CLIENT_ID)
+        uploaded_image = im.upload_image(PATH, title=title)
+        url=uploaded_image.link
+        message = ImageSendMessage(
+            original_content_url=url, preview_image_url=url
+        )
+        line_bot_api.reply_message(event.reply_token, message)  
+    except:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！QQQQ'))
+                
 def addCategory(event):
     try:
         mtext = event.message.text
