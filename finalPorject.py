@@ -51,26 +51,26 @@ def callback():
 @handler.add(MessageEvent)
 def handle_message(event):
     if event.message.type == 'image':
-        qrcodeDecode(event)
+        qrcodeDecode(event)#{使用者傳圖片}
     elif event.message.type == 'audio':
-        audioTotext(event)
+        audioTotext(event)#{使用者傳音訊}
     elif event.message.type == 'text':
         rplyText = event.message.text
         keywords = rplyText.split('@')
-        if rplyText[-4:] == '.jpg':
+        if rplyText[-4:] == '.jpg':#{搜尋資訊}.jpg
             googleSearch(event)
         elif keywords[1] == '新增種類':
-            addCategory(event)
+            addCategory(event)#@新增種類
         elif rplyText[0] == '@' and len(rplyText)>5:
-            addExpenses(event)
+            addExpenses(event)#@交通@火車@140
         elif rplyText[0] == '@' and len(rplyText)==3:
-            totalCaculate(event)
+            totalCaculate(event)#@交通
         elif keywords[1] == '圓餅圖' and len(rplyText)==4 :
-            totalPiechart(event)
+            totalPiechart(event)#@圓餅圖
             
 
 
-def audioTotext(event):
+def audioTotext(event):#{使用者傳音訊}
     try:
         audio_content = line_bot_api.get_message_content(event.message.id)
         path = './static/sound.m4a'
@@ -92,7 +92,7 @@ def audioTotext(event):
             event.reply_token, TextSendMessage(text='發生錯誤！'))
 
 
-def qrcodeDecode(event):
+def qrcodeDecode(event):#{使用者傳圖片}
     try:
         image_name = ''.join(random.choice(
             string.ascii_letters + string.digits) for x in range(4))
@@ -144,7 +144,7 @@ def qrcodeDecode(event):
             event.reply_token, TextSendMessage(text='發生錯誤！'))
 
 
-def googleSearch(event):
+def googleSearch(event):#{搜尋資訊}.jpg
 
     try:
         get_message = event.message.text.rstrip()
@@ -212,7 +212,7 @@ def totalCaculate(event):#@交通
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！'))
         
         
-def totalPiechart(event):#@交通
+def totalPiechart(event):#@圓餅圖
     mtext = event.message.text
     keywords = mtext.split('@')
     path1 = '/Category/交通'
