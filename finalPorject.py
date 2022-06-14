@@ -65,7 +65,7 @@ def handle_message(event):
             addExpenses(event)#@交通@火車@140
         elif rplyText[0] == '@' and len(rplyText)==3:
             totalCaculate(event)#@交通
-        elif keywords[1] == '圓餅圖' and len(rplyText)==4 :
+        elif keywords[1] == '圓餅圖'  :
             totalPiechart(event)#@圓餅圖
             
 
