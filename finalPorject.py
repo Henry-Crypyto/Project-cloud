@@ -1,3 +1,4 @@
+from cv2 import findEssentialMat
 from pyzbar.pyzbar import decode  # python zbarcode
 from PIL import Image  # Python Imaging Library
 import sys  # opencv
@@ -55,13 +56,15 @@ def handle_message(event):
     elif event.message.type == 'text':
         rplyText = event.message.text
         keywords = rplyText.split('@')
-        text3 = rplyText
         if rplyText[-4:] == '.jpg':
             googleSearch(event)
-        elif keywords[1] == 'addCategory':
+        elif keywords[1] == '新增種類':
             addCategory(event)
-        elif text3[3] == '@':
+        elif rplyText[0] == '@' and len(rplyText)>3:
             addExpenses(event)
+        elif rplyText[0] == '@' and len(rplyText)==3:
+            totalCaculate(event)
+            
 
 
 def audioTotext(event):
@@ -165,12 +168,11 @@ def googleSearch(event):
         print(message)
         line_bot_api.reply_message(event.reply_token, message)
     except:
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text='發生錯誤！'))
-# @交通@火車@140
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！'))
 
 
-def addExpenses(event):
+
+def addExpenses(event):# @交通@火車@140
     mtext = event.message.text
     keywords = mtext.split('@')
     try:
@@ -185,10 +187,31 @@ def addExpenses(event):
         #line_bot_api.reply_message(event.reply_token, [TextSendMessage(text= reply_text), TextSendMessage(text= reply_text1)])
 
     except:
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text='發生錯誤！'))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！'))
 
-
+def totalCaculate(event):#@交通
+    mtext = event.message.text
+    keywords = mtext.split('@')
+    path = '/Category/'+keywords[1]
+    totalPrice=0
+    try:
+        expensesName=[]
+        expensesPrice=[]
+        expensesKey = fb.get(path, None)
+        for keysss in expensesKey:
+            expensesName.append(expensesKey.get(keysss).get('name')+str(expensesKey.get(keysss).get('price')))
+        for keysss in expensesKey:
+            expensesPrice.append(expensesKey.get(keysss).get('price'))
+        list=","'\n'.join(expensesName)
+        expensesSum = sum(expensesPrice)
+        sumText='\n--------------------------\n你總共花費了:'+str(expensesSum)+'元'
+        finalText=list+sumText
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=finalText))    
+    except:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text='發生錯誤！'))
+        
+        
+        
 def addCategory(event):
     try:
         mtext = event.message.text
