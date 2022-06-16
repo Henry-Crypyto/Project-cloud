@@ -1,38 +1,30 @@
-from cv2 import findEssentialMat
 from pyzbar.pyzbar import decode  # python zbarcode
 from PIL import Image  # Python Imaging Library 
 import cv2
 import pyimgur
 import pandas as pd
 import matplotlib.pyplot as plt
-from urllib.parse import parse_qsl
 from linebot.models import MessageEvent, TextMessage, PostbackEvent, TextSendMessage, ImagemapSendMessage, BaseSize, MessageImagemapAction, URIImagemapAction, ImagemapArea, TemplateSendMessage, ButtonsTemplate, DatetimePickerTemplateAction
 from linebot.exceptions import InvalidSignatureError
 from linebot import LineBotApi, WebhookHandler
 from flask import request, abort
 from firebase import firebase
-from collections import UserList
-from email import message
 from flask import Flask
 import speech_recognition as sr
 from serpapi import GoogleSearch
 from pydub import AudioSegment
 import random
 from flask import Flask, request, abort
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
-import re
 import os
 import string
 plt.switch_backend('agg')
 app = Flask(__name__)
 line_bot_api = LineBotApi(
-    'MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU=')
+    'MWdhAwjkGg9rWLi5d7w+LBv+pQ9o6fDgETMLjexvTRDUr9Aju+j7ibidk8BnXu9VcATEz7oXuhIdHDrQNwGpBp+FesASbbcRgdzIKF2QeiJgQKQ3o/s3zMX6vZlkmE+xtzYbbHai5g9BrXN0+3e2FwdB04t89/1O/w1cDnyilFU='
+    )
 handler = WebhookHandler('d03f66f4f4f5e6229b108acb97396a34')
 url = 'https://henrydb1-69d3b-default-rtdb.asia-southeast1.firebasedatabase.app/'
 fb = firebase.FirebaseApplication(url, None)
@@ -68,9 +60,18 @@ def handle_message(event):
             totalCaculate(event)#@交通
         elif keywords[1] == '圓餅圖'  :
             totalPiechart(event)#@圓餅圖
+        elif keywords[1] == 'help'  :
+            commandHelp(event)
             
 
-
+def commandHelp(event):
+    try:
+        rplyText='你好，這是您的私人小助手\n本機器人可以做三項功能\n1.幫您計帳\n2.幫您搜尋圖片\n3.幫您把語音訊息轉成文字\n相關指令格式如下:\n記帳相關:\n@新增種類\n@(分類)@(內容)@(價錢)\n@(分類))\n@圓餅圖\n搜尋圖片相關:\n@(照片).jpg\n'
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=rplyText))
+    except:
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text='發生錯誤！'))
+        
 def audioTotext(event):#{使用者傳音訊}
     try:
         audio_content = line_bot_api.get_message_content(event.message.id)
@@ -97,7 +98,8 @@ def audioTotext(event):#{使用者傳音訊}
 def qrcodeDecode(event):#{使用者傳圖片}
     try:
         image_name = ''.join(
-            random.choice(string.ascii_letters + string.digits) for x in range(4))
+            random.choice(string.ascii_letters + string.digits) for x in range(4)
+            )
         image_content = line_bot_api.get_message_content(event.message.id)
         image_name = image_name.upper()+'.jpg'
         path = './static/'+image_name
@@ -137,11 +139,13 @@ def qrcodeDecode(event):#{使用者傳圖片}
         if dataText[24:27] == '578':
             message = '恭喜中獎500元!!!\n'+reciptNum
             line_bot_api.reply_message(
-                event.reply_token, TextSendMessage(text=message))
+                event.reply_token, TextSendMessage(text=message)
+                )
         elif dataText[24:27] != '578':
             message1 = '沒中獎，下次再來~\n'+reciptNum
             line_bot_api.reply_message(
-                event.reply_token, TextSendMessage(text=message1))
+                event.reply_token, TextSendMessage(text=message1)
+                )
 
     except:
         line_bot_api.reply_message(
@@ -152,13 +156,15 @@ def googleSearch(event):#{搜尋資訊}.jpg
 
     try:
         get_message = event.message.text.rstrip()
+        tempText=get_message.split('@')
+        searchMessage=tempText[1]
         URL_list = []
         params = {
             "engine": "google",
             "tbm": "isch",
             "api_key": "24410c7313e732c1f2363dc9939a220d0f4d0d6dab53d0372ca2272b9f2802b9",
         }
-        params['q'] = get_message
+        params['q'] = searchMessage
         client = GoogleSearch(params)
         data = client.get_dict()
         imgs = data['images_results']
